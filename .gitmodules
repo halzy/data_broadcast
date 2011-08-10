@@ -1,0 +1,3 @@
+[submodule "apps/cowboy"]
+	path = apps/cowboy
+	url = git://github.com/extend/cowboy.git
