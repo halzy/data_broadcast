@@ -24,5 +24,6 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    DataPusher = ?CHILD(data_pusher, worker),
+    {ok, { {one_for_one, 5, 10}, [DataPusher]} }.
 

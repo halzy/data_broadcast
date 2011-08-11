@@ -5,7 +5,8 @@
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+		  cowboy
                  ]},
   {mod, { data_broadcast, []}},
   {env, []}
