@@ -14,22 +14,23 @@
 
 -module(data_broadcast_incoming).
 
--export([start_link/3]). 
--export([init/3]). 
+-export([start_link/4]). 
+-export([init/4]). 
 
 -record(state, {
-	socket :: inet:socket(),
-	transport :: module()
-}).
+	  socket :: inet:socket(),
+	  transport :: module()
+	 }).
 
--spec start_link(inet:socket(), module(), any()) -> {ok, pid()}.
-start_link(Socket, Transport, Opts) ->
-	Pid = spawn_link(?MODULE, init, [Socket, Transport, Opts]),
-	{ok, Pid}.
+-spec start_link(pid(), inet:socket(), module(), any()) -> {ok, pid()}.
+start_link(ListenerPid, Socket, Transport, Opts) ->
+    Pid = spawn_link(?MODULE, init, [ListenerPid, Socket, Transport, Opts]),
+    {ok, Pid}.
 
--spec init(inet:socket(), module(), any()) -> ok.
-init(Socket, Transport, _Opts) ->
-	read_data(#state{socket=Socket, transport=Transport}).
+-spec init(pid(), inet:socket(), module(), any()) -> ok.
+init(ListenerPid, Socket, Transport, _Opts) ->
+    ok = cowboy:accept_ack(ListenerPid),
+    read_data(#state{socket=Socket, transport=Transport}).
 
 -spec read_data(#state{}) -> ok.
 read_data(State=#state{socket=Socket, transport=Transport}) ->

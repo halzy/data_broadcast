@@ -1,3 +1,5 @@
 apps/data_broadcaster/ebin/
+apps/data_broadcaster/.eunit/
 rel/data_broadcaster/
 *~
+apps/deps/

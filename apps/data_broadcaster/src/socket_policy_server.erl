@@ -1,4 +1,4 @@
-%% Copyright (c) 2011, Benjamin Halsted <benhalsted@sportvision.com>
+%% Copyright (c) 2011, Benjamin Halsted <bhalsted@gmail.com>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -14,28 +14,34 @@
 
 -module(socket_policy_server).
 
--export([start_link/3]). 
--export([init/3]). 
+-export([start_link/4]). 
+-export([init/4]). 
+-export([get_socket_policy_xml/0]).
 
 -record(state, {
-	socket :: inet:socket(),
-	transport :: module()
+	  listener :: pid(),
+	  socket :: inet:socket(),
+	  transport :: module()
 }).
 
--spec start_link(inet:socket(), module(), any()) -> {ok, pid()}.
-start_link(Socket, Transport, Opts) ->
-	Pid = spawn_link(?MODULE, init, [Socket, Transport, Opts]),
+-spec start_link(pid(), inet:socket(), module(), any()) -> {ok, pid()}.
+start_link(ListenerPid, Socket, Transport, Opts) ->
+	Pid = spawn_link(?MODULE, init, [ListenerPid, Socket, Transport, Opts]),
 	{ok, Pid}.
 
--spec init(inet:socket(), module(), any()) -> ok.
-init(Socket, Transport, _Opts) ->
-	read_data(#state{socket=Socket, transport=Transport}).
+-spec init(pid(), inet:socket(), module(), any()) -> ok.
+init(ListenerPid, Socket, Transport, _Opts) ->
+    ok = cowboy:accept_ack(ListenerPid),
+    read_data(#state{listener=ListenerPid, socket=Socket, transport=Transport}).
 
 -spec read_data(#state{}) -> ok.
 read_data(#state{socket=Socket, transport=Transport}) ->
-    case Transport:recv(Socket, 0, 3000) of
-	{ok, _Data} -> Transport:send(Socket, <<"<?xml version=\"1.0\"?><!DOCTYPE cross-domain-policy SYSTEM \"/xml/dtds/cross-domain-policy.dtd\"><cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>">>), ok;
-	{error, timeout} -> Transport:close(Socket), ok;
-	{error, closed} -> Transport:close(Socket), ok
-    end.
+    case Transport:recv(Socket, 23, 3000) of
+	{ok, <<"<policy-file-request/>", 0>>} -> Transport:send(Socket, [get_socket_policy_xml()]), ok;
+	Other -> lager:warning("SocketPolicyServer received: ~p", [Other])
+    end,
+    Transport:close(Socket).
 
+-spec get_socket_policy_xml() -> binary().
+get_socket_policy_xml() ->
+    <<"<?xml version=\"1.0\"?><!DOCTYPE cross-domain-policy SYSTEM \"/xml/dtds/cross-domain-policy.dtd\"><cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>", 0>>.
