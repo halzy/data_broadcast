@@ -1,5 +1,5 @@
 
-.PHONY: all deps compile clean test release
+.PHONY: all deps compile clean test release xref
 
 all: compile test
 
@@ -14,6 +14,9 @@ clean:
 
 test:
 	(cd apps/data_broadcaster/ && ../../rebar eunit skip_deps=true)
+
+xref: compile
+	(cd apps/data_broadcaster/ && ../../rebar xref skip_deps=true)
 
 release:
 	(./rebar generate)
