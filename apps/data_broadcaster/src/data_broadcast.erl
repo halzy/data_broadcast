@@ -46,7 +46,6 @@ start_listener([{listen, Listen}|Listeners]) ->
 
   Dispatch = [
       {'_', [
-             %{['<<"raceview">>'], data_broadcast_websocket, [InPort]},
              {'_', data_broadcast_websocket, [InPort]}
              ]}
       ],
