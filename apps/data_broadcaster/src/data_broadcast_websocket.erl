@@ -49,9 +49,6 @@ function ready(){
 		ws.onopen = function() {
 			// websocket is connected
 			addStatus(\"websocket connected!\");
-			// send hello data to server.
-			//ws.send(\"hello server!\");
-			//addStatus(\"sent message to server: 'hello server'!\");
 		};
 		ws.onmessage = function (evt) {
 			var receivedMsg = evt.data;
@@ -84,28 +81,21 @@ terminate(_Req, _State) ->
       id :: integer()
      }).
 
-websocket_init(_Any, Req, Opts) ->
-    ID = 8002,
-    lager:info("websocket_init: ", Opts),
+websocket_init(_Any, Req, [ID]) ->
     data_pusher:subscribe(ID),
     Req2 = cowboy_req:compact(Req),
     {ok, Req2, #state{id=ID}, hibernate}.
 
 websocket_handle({text, Msg}, Req, State) ->
-    lager:info("websocket_handle: "),
     {reply, {text, << "You said: ", Msg/binary >>}, Req, State, hibernate};
 websocket_handle(_Any, Req, State) ->
-    lager:info("websocket_handle: "),
     {ok, Req, State, hibernate}.
 
 websocket_info({send, Data}, Req, State) ->
-    lager:info("websocket_info: "),
     {reply, {binary, Data}, Req, State, hibernate};
 websocket_info(_Info, Req, State) ->
-    lager:info("websocket_info: ~p", [_Info]),
     {ok, Req, State, hibernate}.
 
 websocket_terminate(_Reason, _Req, #state{id=ID}) ->
-    lager:info("websocket_terminate: ", [ID]),
     data_pusher:unsubscribe(ID),
     ok.
