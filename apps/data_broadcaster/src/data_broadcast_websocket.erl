@@ -21,16 +21,14 @@
 -export([websocket_init/3, websocket_handle/3, websocket_info/3, websocket_terminate/3]).
 
 init({_Any, http}, Req, Opts) ->
-{upgrade, protocol, cowboy_websocket}.
-    % case cowboy_req:header('Upgrade', Req) of
-    % 	{undefined, Req2} -> {ok, Req2, undefined};
-    % 	_Other -> 
-    %         lager:error("init: ~p", [_Other]),
-    %         {upgrade, protocol, cowboy_websocket}
-    % end.
+    case cowboy_req:header(<<"upgrade">>, Req) of
+    	{undefined, Req2} -> {ok, Req2, undefined_state};
+    	_Other -> 
+            {upgrade, protocol, cowboy_websocket}
+    end.
 
 handle(Req, State) ->
-	{ok, Req2} = cowboy_req:reply(200, [{"Content-Type", <<"text/html">>}],
+	{ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/html">>}],
 %% HTML code taken from misultin's example file.
 <<"<html>
 <head>
