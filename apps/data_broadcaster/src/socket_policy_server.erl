@@ -18,9 +18,9 @@
 -export([init/4]). 
 
 -record(state, {
-	  listener :: pid(),
-	  socket :: inet:socket(),
-	  transport :: module()
+    listener :: pid(),
+    socket :: inet:socket(),
+    transport :: module()
 }).
 
 -spec start_link(pid(), inet:socket(), module(), any()) -> {ok, pid()}.
@@ -36,10 +36,10 @@ init(ListenerPid, Socket, Transport, _Opts) ->
 -spec read_data(#state{}) -> ok.
 read_data(#state{socket=Socket, transport=Transport}) ->
     case Transport:recv(Socket, 23, 3000) of
-	{ok, <<"<policy-file-request/>", 0>>} -> Transport:send(Socket, [get_socket_policy_xml()]), ok;
-	Other -> lager:warning("SocketPolicyServer received: ~p", [Other])
+    	{ok, <<"<policy-file-request/>", 0>>} -> Transport:send(Socket, [get_socket_policy_xml()]), ok;
+    	Other -> lager:warning("SocketPolicyServer received: ~p", [Other])
     end,
-    Transport:close(Socket).
+        Transport:close(Socket).
 
 -spec get_socket_policy_xml() -> binary().
 get_socket_policy_xml() ->
