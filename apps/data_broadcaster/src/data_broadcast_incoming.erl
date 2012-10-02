@@ -19,7 +19,8 @@
 
 -record(state, {
 	  socket :: inet:socket(),
-	  transport :: module()
+	  transport :: module(),
+      id :: integer()
 	 }).
 
 -spec start_link(pid(), inet:socket(), module(), any()) -> {ok, pid()}.
@@ -28,15 +29,15 @@ start_link(ListenerPid, Socket, Transport, Opts) ->
     {ok, Pid}.
 
 -spec init(pid(), inet:socket(), module(), any()) -> ok.
-init(ListenerPid, Socket, Transport, _Opts) ->
-    ok = cowboy:accept_ack(ListenerPid),
-    read_data(#state{socket=Socket, transport=Transport}).
+init(ListenerPid, Socket, Transport, [ID]) ->
+    ok = ranch:accept_ack(ListenerPid),
+    read_data(#state{socket=Socket, transport=Transport, id=ID}).
 
 -spec read_data(#state{}) -> ok.
-read_data(State=#state{socket=Socket, transport=Transport}) ->
+read_data(State=#state{socket=Socket, transport=Transport, id=ID}) ->
     case Transport:recv(Socket, 0, infinity) of
 	{ok, Data} -> 
-	    data_pusher:push(Data),
+	    data_pusher:push(ID, Data),
 	    read_data(State); 
 	{error, timeout} -> Transport:close(Socket), ok;
 	{error, closed} -> Transport:close(Socket), ok

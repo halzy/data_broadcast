@@ -14,9 +14,8 @@
 
 -module(socket_policy_server).
 
--export([start_link/4]). 
+-export([start_link/4]).
 -export([init/4]). 
--export([get_socket_policy_xml/0]).
 
 -record(state, {
 	  listener :: pid(),
@@ -31,7 +30,7 @@ start_link(ListenerPid, Socket, Transport, Opts) ->
 
 -spec init(pid(), inet:socket(), module(), any()) -> ok.
 init(ListenerPid, Socket, Transport, _Opts) ->
-    ok = cowboy:accept_ack(ListenerPid),
+    ok = ranch:accept_ack(ListenerPid),
     read_data(#state{listener=ListenerPid, socket=Socket, transport=Transport}).
 
 -spec read_data(#state{}) -> ok.

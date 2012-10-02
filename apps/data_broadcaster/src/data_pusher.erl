@@ -17,7 +17,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, subscribe/0, unsubscribe/0, push/1]).
+-export([start_link/0, subscribe/1, unsubscribe/1, push/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {
-	  subscribers = [] :: [pid()]
+	  subscribers = [] :: [{integer(), pid()}]
 	 }).
 
 %%%===================================================================
@@ -43,14 +43,14 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-subscribe() ->
-    gen_server:call(?MODULE, subscribe).
+subscribe(ID) ->
+    gen_server:call(?MODULE, {subscribe, ID}).
 
-unsubscribe() ->
-    gen_server:call(?MODULE, unsubscribe).
+unsubscribe(ID) ->
+    gen_server:call(?MODULE, {unsubscribe, ID}).
 
-push(Data) ->
-    gen_server:cast(?MODULE, {push, Data}).
+push(Data, ID) ->
+    gen_server:cast(?MODULE, {push, {Data, ID}}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -84,10 +84,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(subscribe, {Pid, _Tag}, #state{subscribers=Subscribers}=State) ->
-    {reply, ok, State#state{subscribers=[Pid|Subscribers]}};
-handle_call(unsubscribe, {Pid, _Tag}, #state{subscribers=Subscribers}=State) ->
-    {reply, ok, State#state{subscribers=lists:delete(Pid,Subscribers)}};
+handle_call({subscribe, ID}, {Pid, _Tag}, #state{subscribers=Subscribers}=State) ->
+    {reply, ok, State#state{subscribers=[{ID, Pid}|Subscribers]}};
+handle_call({unsubscribe, ID}, {Pid, _Tag}, #state{subscribers=Subscribers}=State) ->
+    {reply, ok, State#state{subscribers=lists:delete({ID, Pid},Subscribers)}};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -102,8 +102,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({push, Data}, State) ->
-    lists:foreach(fun(Pid) -> Pid ! {send, Data} end, State#state.subscribers),
+handle_cast({push, {ID1, Data}}, State) ->
+    Dispatch =  fun({ID2, Pid}) -> 
+                    case ID2 of
+                        ID1 -> Pid ! {send, Data};
+                        _ -> ok
+                    end
+                end,
+    lists:foreach(Dispatch, State#state.subscribers),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.

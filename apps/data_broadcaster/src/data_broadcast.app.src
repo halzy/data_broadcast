@@ -6,7 +6,9 @@
   {applications, [
                   kernel,
                   stdlib,
-		  cowboy
+                  lager,
+                  ranch,
+		              cowboy
                  ]},
   {mod, { data_broadcast, []}},
   {env, []}

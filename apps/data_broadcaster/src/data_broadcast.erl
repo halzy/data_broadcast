@@ -16,37 +16,55 @@ config(Name, Default) ->
     end.
 
 start(_StartType, _StartArgs) ->
+    Result = data_broadcast_sup:start_link(),
 
     % the firewall (iptables) is redirecting port 843 to 8843 for us
     % this is so we do not have to run erlang as root
     PolicyPort = config(policy_port, 8443),
-    InPort = config(in_port, 5013),
-    OutPort = config(out_port, 8482),
-    WsPort = config(ws_port, 8002),
+    ranch:start_listener(plcy, 128, 
+              ranch_tcp, [{port, PolicyPort}],
+              socket_policy_server, []),
 
-    data_broadcast_sup:start_link(),
-    Dispatch = [
-		{'_', [
-		       {[<<"raceview">>], data_broadcast_websocket, []},
-		       {'_', default_handler, []}
-		       ]}
-		],
-    cowboy:start_listener(plcy, 128, 
-			  cowboy_tcp_transport, [{port, PolicyPort}],
-			  socket_policy_server, []),
-    cowboy:start_listener(svrv, 128, 
-			  cowboy_tcp_transport, [{port, InPort}],
-			  data_broadcast_incoming, []),
-    cowboy:start_listener(wbks, 128, 
-			  cowboy_tcp_transport, [{port, WsPort}],
-			  cowboy_http_protocol, [{dispatch, Dispatch}]),
-    cowboy:start_listener(clnt, 128, 
-			  cowboy_tcp_transport, [{port, OutPort}],
-			  data_broadcast_outgoing, []).
+    ConfigList = config(listeners, []),
+
+    start_listener(ConfigList),
+
+    Result.
+
+list_config(List, Name, Default) ->
+    case lists:keyfind(Name, 1, List) of
+      false -> Default;
+      {Name, Value} -> Value
+    end.
+
+start_listener([]) ->
+  ok;
+start_listener([{listen, Listen}|Listeners]) ->
+  InPort = list_config(Listen, in, 5013),
+  OutPort = list_config(Listen, out, 8482),
+  WsPort = list_config(Listen, ws, 8002),
+
+  Dispatch = [
+      {'_', [
+             %{['<<"raceview">>'], data_broadcast_websocket, [InPort]},
+             {'_', data_broadcast_websocket, [InPort]}
+             ]}
+      ],
+  ranch:start_listener("svrv_" ++ integer_to_list(InPort), 128,
+            ranch_tcp, [{port, InPort}],
+            data_broadcast_incoming, [InPort]),
+  ranch:start_listener("clnt_" ++ integer_to_list(InPort), 128,
+            ranch_tcp, [{port, OutPort}],
+            data_broadcast_outgoing, [InPort]),
+  cowboy:start_http("wbsk_" ++ integer_to_list(InPort), 128, 
+            [{port, WsPort}], [{dispatch, Dispatch}]),
+  start_listener(Listeners).
 
 stop(_State) ->
     ok.
 
 start() ->
-     application:start(cowboy),
-     application:start(data_broadcast).
+  application:start(lager),
+  application:start(ranch),
+  application:start(cowboy),
+  application:start(data_broadcast).

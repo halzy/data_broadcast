@@ -15,20 +15,22 @@
 -module(data_broadcast_websocket).
 
 -behaviour(cowboy_http_handler).
--behaviour(cowboy_http_websocket_handler).
+-behaviour(cowboy_websocket_handler).
 
 -export([init/3, handle/2, terminate/2]).
 -export([websocket_init/3, websocket_handle/3, websocket_info/3, websocket_terminate/3]).
 
-init({_Any, http}, Req, []) ->
-    case cowboy_http_req:header('Upgrade', Req) of
-	{undefined, Req2} -> {ok, Req2, undefined};
-	{<<"websocket">>, _Req2} -> {upgrade, protocol, cowboy_http_websocket};
-	{<<"WebSocket">>, _Req2} -> {upgrade, protocol, cowboy_http_websocket}
-    end.
+init({_Any, http}, Req, Opts) ->
+{upgrade, protocol, cowboy_websocket}.
+    % case cowboy_req:header('Upgrade', Req) of
+    % 	{undefined, Req2} -> {ok, Req2, undefined};
+    % 	_Other -> 
+    %         lager:error("init: ~p", [_Other]),
+    %         {upgrade, protocol, cowboy_websocket}
+    % end.
 
 handle(Req, State) ->
-	{ok, Req2} = cowboy_http_req:reply(200, [{'Content-Type', <<"text/html">>}],
+	{ok, Req2} = cowboy_req:reply(200, [{"Content-Type", <<"text/html">>}],
 %% HTML code taken from misultin's example file.
 <<"<html>
 <head>
@@ -45,18 +47,21 @@ function ready(){
 	}
 	if (\"WebSocket\" in window) {
 		// browser supports websockets
-		var ws = new WebSocket(\"ws://localhost:8002/raceview\");
+		var ws = new WebSocket(\"ws://localhost:8002/\");
 		ws.onopen = function() {
 			// websocket is connected
 			addStatus(\"websocket connected!\");
 			// send hello data to server.
-			ws.send(\"hello server!\");
-			addStatus(\"sent message to server: 'hello server'!\");
+			//ws.send(\"hello server!\");
+			//addStatus(\"sent message to server: 'hello server'!\");
 		};
 		ws.onmessage = function (evt) {
 			var receivedMsg = evt.data;
 			addStatus(\"server sent the following: '\" + receivedMsg + \"'\");
 		};
+        ws.onerror = function (evt) {
+            addStatus(\"error: '\" + evt + \"'\")
+        };
 		ws.onclose = function() {
 			// websocket was closed
 			addStatus(\"websocket was closed\");
@@ -69,7 +74,6 @@ function ready(){
 </script>
 </head>
 <body onload=\"ready();\">
-Hi!
 		<div id=\"status\"></div>
 </body>
 		</html>">>, Req),
@@ -78,22 +82,32 @@ Hi!
 terminate(_Req, _State) ->
     ok.
 
-websocket_init(_Any, Req, []) ->
-    data_pusher:subscribe(),
-    Req2 = cowboy_http_req:compact(Req),
-    {ok, Req2, undefined, hibernate}.
+-record(state, {
+      id :: integer()
+     }).
+
+websocket_init(_Any, Req, Opts) ->
+    ID = 8002,
+    lager:info("websocket_init: ", Opts),
+    data_pusher:subscribe(ID),
+    Req2 = cowboy_req:compact(Req),
+    {ok, Req2, #state{id=ID}, hibernate}.
 
 websocket_handle({text, Msg}, Req, State) ->
+    lager:info("websocket_handle: "),
     {reply, {text, << "You said: ", Msg/binary >>}, Req, State, hibernate};
 websocket_handle(_Any, Req, State) ->
-    {ok, Req, State}.
-
-websocket_info({send, Data}, Req, State) ->
-    {reply, {binary, Data}, Req, State, hibernate};
-websocket_info(_Info, Req, State) ->
-    lager:info("ws_info: ~p", [_Info]),
+    lager:info("websocket_handle: "),
     {ok, Req, State, hibernate}.
 
-websocket_terminate(_Reason, _Req, _State) ->
-    data_pusher:unsubscribe(),
+websocket_info({send, Data}, Req, State) ->
+    lager:info("websocket_info: "),
+    {reply, {binary, Data}, Req, State, hibernate};
+websocket_info(_Info, Req, State) ->
+    lager:info("websocket_info: ~p", [_Info]),
+    {ok, Req, State, hibernate}.
+
+websocket_terminate(_Reason, _Req, #state{id=ID}) ->
+    lager:info("websocket_terminate: ", [ID]),
+    data_pusher:unsubscribe(ID),
     ok.

@@ -14,40 +14,41 @@
 
 -module(data_broadcast_outgoing).
 
--export([start_link/3]). 
--export([init/3]). 
+-export([start_link/4]). 
+-export([init/4]). 
 
 -record(state, {
 	socket :: inet:socket(),
-	transport :: module()
+	transport :: module(),
+    id :: integer()
 }).
 
--spec start_link(inet:socket(), module(), any()) -> {ok, pid()}.
-start_link(Socket, Transport, Opts) ->
-	Pid = spawn_link(?MODULE, init, [Socket, Transport, Opts]),
+-spec start_link(pid(), inet:socket(), module(), any()) -> {ok, pid()}.
+start_link(ListenerPid, Socket, Transport, Opts) ->
+	Pid = spawn_link(?MODULE, init, [ListenerPid, Socket, Transport, Opts]),
 	{ok, Pid}.
 
--spec init(inet:socket(), module(), any()) -> ok.
-init(Socket, Transport, _Opts) ->
-    data_pusher:subscribe(),
-    data_loop(#state{socket=Socket, transport=Transport}).
+-spec init(pid(), inet:socket(), module(), any()) -> ok.
+init(ListenerPid, Socket, Transport, [ID]) ->
+    ok = ranch:accept_ack(ListenerPid),
+    data_pusher:subscribe(ID),
+    data_loop(#state{socket=Socket, transport=Transport, id=ID}).
 
 -spec data_loop(#state{}) -> ok.
-data_loop(State=#state{socket=Socket, transport=Transport}) ->
+data_loop(State=#state{socket=Socket, transport=Transport, id=ID}) ->
     receive
-	{send, SendData} ->
-	    case Transport:send(Socket, SendData) of
-		ok -> data_loop(State);
-		{error, _Reason} -> 
-		    data_pusher:unsubscribe(), ok
-	    end
-    after
-	1000 ->
+    	{send, SendData} ->
+    	    case Transport:send(Socket, SendData) of
+        		ok -> data_loop(State);
+        		{error, _Reason} -> 
+        		    data_pusher:unsubscribe(ID), ok
+    	    end
+    after 1000 ->
 	    %% drop data the data receiver sends us
 	    case Transport:recv(Socket, 0, 0) of
-		{ok, _Data} -> data_loop(State);
-		{error, timeout} -> data_loop(State);
-		{error, _Reason} -> 
-		    data_pusher:unsubscribe(), ok
+    		{ok, _Data} -> data_loop(State);
+    		{error, timeout} -> data_loop(State);
+    		{error, _Reason} -> 
+    		    data_pusher:unsubscribe(ID), ok
 	    end
     end.
