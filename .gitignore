@@ -2,3 +2,4 @@
 ebin/
 log/
 deps/
+rel/data_broadcast/
