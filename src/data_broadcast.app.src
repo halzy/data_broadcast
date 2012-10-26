@@ -1,7 +1,8 @@
 {application, data_broadcast,
  [
-  {description, ""},
-  {vsn, "1"},
+  {description, "Broadcasting TCP/Websocket Server"},
+  {vsn, git},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,

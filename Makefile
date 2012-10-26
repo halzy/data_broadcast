@@ -4,20 +4,20 @@
 all: compile test
 
 deps:
-	(cd apps/data_broadcaster/ && ../../rebar get-deps)
+	./rebar get-deps
 
 compile: deps
-	(cd apps/data_broadcaster/ && ../../rebar compile)
+	./rebar compile
 
 clean:
-	(cd apps/data_broadcaster/ && ../../rebar clean)
+	./rebar clean
 
 test:
-	(cd apps/data_broadcaster/ && ../../rebar eunit skip_deps=true)
+	./rebar eunit skip_deps=true
 
 xref: compile
-	(cd apps/data_broadcaster/ && ../../rebar xref skip_deps=true)
+	./rebar xref skip_deps=true
 
-release:
-	(./rebar generate)
+release: compile
+	./rebar generate
 
