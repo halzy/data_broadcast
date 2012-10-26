@@ -39,7 +39,7 @@ read_data(#state{socket=Socket, transport=Transport}) ->
     	{ok, <<"<policy-file-request/>", 0>>} -> Transport:send(Socket, [get_socket_policy_xml()]), ok;
     	Other -> lager:warning("SocketPolicyServer received: ~p", [Other])
     end,
-        Transport:close(Socket).
+    Transport:close(Socket).
 
 -spec get_socket_policy_xml() -> binary().
 get_socket_policy_xml() ->
