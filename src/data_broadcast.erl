@@ -3,11 +3,14 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/0, start/2, stop/0]).
+-export([start/0, start/2, stop/0, stop/1]).
 
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
+
+stop(_State) ->
+    ok.
 
 config(Name, Default) ->
     case application:get_env(?MODULE, Name) of

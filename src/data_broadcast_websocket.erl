@@ -17,10 +17,10 @@
 -behaviour(cowboy_http_handler).
 -behaviour(cowboy_websocket_handler).
 
--export([init/3, handle/2, terminate/2]).
+-export([init/3, handle/2, terminate/3]).
 -export([websocket_init/3, websocket_handle/3, websocket_info/3, websocket_terminate/3]).
 
-init({_Any, http}, Req, Opts) ->
+init({_Any, http}, Req, _Opts) ->
     case cowboy_req:header(<<"upgrade">>, Req) of
     	{undefined, Req2} -> {ok, Req2, undefined_state};
     	_Other -> 
@@ -74,7 +74,7 @@ function ready(){
 		</html>">>, Req),
 	{ok, Req2, State}.
 
-terminate(_Req, _State) ->
+terminate(_Reason, _Req, _State) ->
     ok.
 
 -record(state, {
