@@ -47,11 +47,9 @@ start_listener([{listen, Listen}|Listeners]) ->
   OutPort = list_config(Listen, out, 8482),
   WsPort = list_config(Listen, ws, 8002),
 
-  Dispatch = [
-      {'_', [
-             {'_', data_broadcast_websocket, [InPort]}
-             ]}
-      ],
+  Dispatch = cowboy_router:compile([
+      {'_', [{'_', data_broadcast_websocket, [InPort]}]}
+    ]),
   ranch:start_listener("svrv_" ++ integer_to_list(InPort), 128,
             ranch_tcp, [{port, InPort}],
             data_broadcast_incoming, [InPort]),
@@ -59,7 +57,7 @@ start_listener([{listen, Listen}|Listeners]) ->
             ranch_tcp, [{port, OutPort}],
             data_broadcast_outgoing, [InPort]),
   cowboy:start_http("wbsk_" ++ integer_to_list(InPort), 128, 
-            [{port, WsPort}], [{dispatch, Dispatch}]),
+            [{port, WsPort}], [{env, [{dispatch, Dispatch}]}]),
   start_listener(Listeners).
 
 start() -> start(?MODULE).
