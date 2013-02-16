@@ -48,7 +48,9 @@ start_listener([{listen, Listen}|Listeners]) ->
   WsPort = list_config(Listen, ws, 8002),
 
   Dispatch = cowboy_router:compile([
-      {'_', [{'_', data_broadcast_websocket, [InPort]}]}
+      {'_', [
+              {'_', data_broadcast_websocket, [InPort]}
+            ]}
     ]),
   ranch:start_listener("svrv_" ++ integer_to_list(InPort), 128,
             ranch_tcp, [{port, InPort}],

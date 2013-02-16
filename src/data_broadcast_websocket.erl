@@ -28,50 +28,7 @@ init({_Any, http}, Req, _Opts) ->
     end.
 
 handle(Req, State) ->
-	{ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/html">>}],
-%% HTML code taken from misultin's example file.
-<<"<html>
-<head>
-<script type=\"text/javascript\">
-function addStatus(text){
-	var date = new Date();
-	document.getElementById('status').innerHTML
-		= document.getElementById('status').innerHTML
-		+ date + \": \" + text + \"<br/>\";
-}
-function ready(){
-	if (\"MozWebSocket\" in window) {
-		WebSocket = MozWebSocket;
-	}
-	if (\"WebSocket\" in window) {
-		// browser supports websockets
-		var ws = new WebSocket(\"ws://localhost:8002/\");
-		ws.onopen = function() {
-			// websocket is connected
-			addStatus(\"websocket connected!\");
-		};
-		ws.onmessage = function (evt) {
-			var receivedMsg = evt.data;
-			addStatus(\"server sent the following: '\" + receivedMsg + \"'\");
-		};
-        ws.onerror = function (evt) {
-            addStatus(\"error: '\" + evt + \"'\")
-        };
-		ws.onclose = function() {
-			// websocket was closed
-			addStatus(\"websocket was closed\");
-		};
-	} else {
-		// browser does not support websockets
-		addStatus(\"sorry, your browser does not support websockets.\");
-	}
-}
-</script>
-</head>
-<body onload=\"ready();\">
-		<div id=\"status\"></div>
-</body>
-		</html>">>, Req),
+	{ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/x-cross-domain-policy">>}], <<"<?xml version=\"1.0\"?><cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>">>, Req),
 	{ok, Req2, State}.
 
 terminate(_Reason, _Req, _State) ->
