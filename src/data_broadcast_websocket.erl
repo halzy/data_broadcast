@@ -20,22 +20,21 @@
 -export([init/3, handle/2, terminate/3]).
 -export([websocket_init/3, websocket_handle/3, websocket_info/3, websocket_terminate/3]).
 
+
 init({_Any, http}, Req, _Opts) ->
-    {Path, PathReq} = cowboy_req:path(Req),
-    case Path of
-        <<"/crossdomain.xml">> ->
-            {ok, PathReq, undefined_state};
-       _ ->
-            {upgrade, protocol, cowboy_websocket}
+    case cowboy_req:header(<<"upgrade">>, Req) of
+        {undefined, Req2} -> {ok, Req2, undefined_state};
+        _ -> {upgrade, protocol, cowboy_websocket}
     end.
+
 
 handle(Req, State) ->
     {Path, PathReq} = cowboy_req:path(Req),
     case Path of
         <<"/crossdomain.xml">> ->
-            {ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/x-cross-domain-policy">>}], <<"<?xml version=\"1.0\"?><cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>">>, PathReq),
+            {ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/x-cross-domain-policy">>}], <<"<?xml version=\"1.0\"?><!DOCTYPE cross-domain-policy SYSTEM \"http://www.adobe.com/xml/dtds/cross-domain-policy.dtd\"><cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>">>, PathReq),
             {ok, Req2, State};
-       Other ->
+       _ ->
             {ok, Req3} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/plain">>}], <<"This space intentionally left blank.">>, PathReq),
             {ok, Req3, State}
     end.
