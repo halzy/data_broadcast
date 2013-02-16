@@ -35,7 +35,7 @@ handle(Req, State) ->
             {ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/x-cross-domain-policy">>}], <<"<?xml version=\"1.0\"?><!DOCTYPE cross-domain-policy SYSTEM \"http://www.adobe.com/xml/dtds/cross-domain-policy.dtd\"><cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>">>, PathReq),
             {ok, Req2, State};
        _ ->
-            {ok, Req3} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/plain">>}], <<"This space intentionally left blank.">>, PathReq),
+            {ok, Req3} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/html">>}], <<"This space intentionally left blank.">>, PathReq),
             {ok, Req3, State}
     end.
 
