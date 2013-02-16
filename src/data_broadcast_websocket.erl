@@ -28,8 +28,15 @@ init({_Any, http}, Req, _Opts) ->
     end.
 
 handle(Req, State) ->
-	{ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/x-cross-domain-policy">>}], <<"<?xml version=\"1.0\"?><cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>">>, Req),
-	{ok, Req2, State}.
+    {Path, PathReq} = cowboy_req:path(Req),
+    case Path of
+        <<"/crossdomain.xml">> ->        
+            {ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/x-cross-domain-policy">>}], <<"<?xml version=\"1.0\"?><cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>">>, PathReq),
+            {ok, Req2, State};
+       Other ->
+            {ok, Req3} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/plain">>}], <<"This space intentionally left blank.">>, PathReq),
+            {ok, Req3, State}
+    end.
 
 terminate(_Reason, _Req, _State) ->
     ok.
