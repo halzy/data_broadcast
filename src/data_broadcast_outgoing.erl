@@ -31,6 +31,7 @@ start_link(ListenerPid, Socket, Transport, Opts) ->
 -spec init(pid(), inet:socket(), module(), any()) -> ok.
 init(ListenerPid, Socket, Transport, [ID]) ->
     ok = ranch:accept_ack(ListenerPid),
+    socket_policy_server:read_policy_request(),
     data_pusher:subscribe(ID),
     data_loop(#state{socket=Socket, transport=Transport, id=ID}).
 

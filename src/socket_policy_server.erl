@@ -16,6 +16,7 @@
 
 -export([start_link/4]).
 -export([init/4]). 
+-export([read_policy_request/1,get_socket_policy_xml/0]).
 
 -record(state, {
     listener :: pid(),
@@ -31,15 +32,15 @@ start_link(ListenerPid, Socket, Transport, Opts) ->
 -spec init(pid(), inet:socket(), module(), any()) -> ok.
 init(ListenerPid, Socket, Transport, _Opts) ->
     ok = ranch:accept_ack(ListenerPid),
-    read_data(#state{listener=ListenerPid, socket=Socket, transport=Transport}).
+    read_policy_request(#state{listener=ListenerPid, socket=Socket, transport=Transport}),
+    Transport:close(Socket).
 
--spec read_data(#state{}) -> ok.
-read_data(#state{socket=Socket, transport=Transport}) ->
+-spec read_policy_request(#state{}) -> ok.
+read_policy_request(#state{socket=Socket, transport=Transport}) ->
     case Transport:recv(Socket, 23, 3000) of
     	{ok, <<"<policy-file-request/>", 0>>} -> Transport:send(Socket, [get_socket_policy_xml()]), ok;
     	Other -> lager:warning("SocketPolicyServer received: ~p", [Other])
-    end,
-    Transport:close(Socket).
+    end.
 
 -spec get_socket_policy_xml() -> binary().
 get_socket_policy_xml() ->
