@@ -32,8 +32,8 @@ init(ListenerPid, Socket, Transport, _Opts) ->
 -spec read_policy_request(inet:socket(), module()) -> ok.
 read_policy_request( Socket, Transport) ->
     case Transport:recv(Socket, 23, 3000) of
-    	{ok, <<"<policy-file-request/>", 0>>} -> Transport:send(Socket, [get_socket_policy_xml()]), ok;
-    	Other -> lager:warning("SocketPolicyServer received: ~p", [Other])
+    	{ok, <<"<policy-file-request/>", 0>>} -> Transport:send(Socket, [get_socket_policy_xml()]), {ok, policy};
+    	Other -> lager:warning("SocketPolicyServer received: ~p", [Other]), {ok, other}
     end.
 
 -spec get_socket_policy_xml() -> binary().
