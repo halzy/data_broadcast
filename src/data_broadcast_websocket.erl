@@ -32,7 +32,7 @@ handle(Req, State) ->
     {Path, PathReq} = cowboy_req:path(Req),
     case Path of
         <<"/crossdomain.xml">> ->
-            {ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/x-cross-domain-policy">>}], <<"<?xml version=\"1.0\"?><cross-domain-policy><site-control permitted-cross-domain-policies=\"all\"/><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>">>, PathReq),
+            {ok, Req2} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/x-cross-domain-policy">>}], <<"<?xml version=\"1.0\"?><cross-domain-policy><site-control permitted-cross-domain-policies=\"all\"/><allow-access-from domain=\"*\" to-ports=\"80,8080,5002,5013,6002,6013,7002,7013,8002,8013,9002,9013\"/></cross-domain-policy>">>, PathReq),
             {ok, Req2, State};
        _ ->
             {ok, Req3} = cowboy_req:reply(200, [{<<"Content-Type">>, <<"text/html">>}], <<"This space intentionally left blank.">>, PathReq),
