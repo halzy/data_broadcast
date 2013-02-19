@@ -26,14 +26,19 @@ start_link(ListenerPid, Socket, Transport, Opts) ->
 -spec init(pid(), inet:socket(), module(), any()) -> ok.
 init(ListenerPid, Socket, Transport, _Opts) ->
     ok = ranch:accept_ack(ListenerPid),
-    read_policy_request( Socket, Transport),
+    case read_policy_request( Socket, Transport) of
+        {ok, policy} ->
+            ok;
+        {ok, other, Other} ->
+            lager:warning("SocketPolicyServer received: ~p", [Other])
+    end,
     Transport:close(Socket).
 
--spec read_policy_request(inet:socket(), module()) -> ok.
+-spec read_policy_request(inet:socket(), module()) -> {ok, policy} | {ok, other}.
 read_policy_request( Socket, Transport) ->
     case Transport:recv(Socket, 23, 3000) of
     	{ok, <<"<policy-file-request/>", 0>>} -> Transport:send(Socket, [get_socket_policy_xml()]), {ok, policy};
-    	Other -> lager:warning("SocketPolicyServer received: ~p", [Other]), {ok, other}
+    	Other -> {ok, other, Other}
     end.
 
 -spec get_socket_policy_xml() -> binary().

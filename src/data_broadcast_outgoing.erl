@@ -34,7 +34,7 @@ init(ListenerPid, Socket, Transport, [ID]) ->
     case socket_policy_server:read_policy_request(Socket, Transport) of
         {ok, policy} ->
             Transport:close(Socket);
-        {ok, other} ->
+        {ok, other, _} ->
             data_pusher:subscribe(ID),
             data_loop(#state{socket=Socket, transport=Transport, id=ID})
     end.
