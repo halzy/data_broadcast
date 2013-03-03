@@ -75,7 +75,7 @@ init(ListenerPid, Socket, Transport, Opts) ->
         {ok, other, {ok, Buffer}} ->
             cowboy_protocol:parse_request(Buffer, State, erlang:size(Buffer));
         {ok, other, {error,timeout}} ->
-            cowboy_protocol:parse_request(<<"">>, State, 0);
+            Transport:close(Socket);
         {ok, other, Other} ->
             lager:warning("SocketPolicyServer unhandled: ~p", [Other]),
             Transport:close(Socket)
