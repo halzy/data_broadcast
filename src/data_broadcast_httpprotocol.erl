@@ -46,6 +46,9 @@ until(Timeout) ->
 %% @private
 -spec init(pid(), inet:socket(), module(), any()) -> ok.
 init(ListenerPid, Socket, Transport, Opts) ->
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% Taken from cowboy_protocol <BEGIN>
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     Compress = get_value(compress, Opts, false),
     MaxEmptyLines = get_value(max_empty_lines, Opts, 5),
     MaxHeaderNameLength = get_value(max_header_name_length, Opts, 64),
@@ -68,7 +71,10 @@ init(ListenerPid, Socket, Transport, Opts) ->
         max_header_value_length=MaxHeaderValueLength, max_headers=MaxHeaders,
         onrequest=OnRequest, onresponse=OnResponse,
         timeout=Timeout, until=until(Timeout)},
-
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% Taken from cowboy_protocol <END>
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     case socket_policy_server:read_policy_request(Socket, Transport) of
         {ok, policy} ->
             Transport:close(Socket);
