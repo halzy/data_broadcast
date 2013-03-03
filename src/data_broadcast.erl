@@ -40,6 +40,11 @@ list_config(List, Name, Default) ->
       {Name, Value} -> Value
     end.
 
+start_http_policy(Ref, NbAcceptors, TransOpts, ProtoOpts)
+    when is_integer(NbAcceptors), NbAcceptors > 0 ->
+  ranch:start_listener(Ref, NbAcceptors,
+    ranch_tcp, TransOpts, data_broadcast_httpprotocol, ProtoOpts).
+
 start_listener([]) ->
   ok;
 start_listener([{listen, Listen}|Listeners]) ->
@@ -58,7 +63,7 @@ start_listener([{listen, Listen}|Listeners]) ->
   ranch:start_listener("clnt_" ++ integer_to_list(InPort), 128,
             ranch_tcp, [{port, OutPort}],
             data_broadcast_outgoing, [InPort]),
-  cowboy:start_http("wbsk_" ++ integer_to_list(InPort), 128, 
+  start_http_policy("wbsk_" ++ integer_to_list(InPort), 128, 
             [{port, WsPort}], [{env, [{dispatch, Dispatch}]}]),
   start_listener(Listeners).
 
