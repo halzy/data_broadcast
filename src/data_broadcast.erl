@@ -18,8 +18,14 @@ config(Name, Default) ->
 	undefined -> Default
     end.
 
+make_broadcast_id(Port) ->
+  list_to_atom("data_pusher_" ++ integer_to_list(Port)).
+
 start(_StartType, _StartArgs) ->
-    Result = data_broadcast_sup:start_link(),
+    ConfigList = config(listeners, []),
+    ListenerPorts = lists:map(fun({listen, Listen}) -> list_config(Listen, in, 5013) end, ConfigList),
+    Broadcasters = [ make_broadcast_id(Port) || Port <- ListenerPorts],
+    Result = data_broadcast_sup:start_link(Broadcasters),
 
     % the firewall (iptables) is redirecting port 843 to 8843 for us
     % this is so we do not have to run erlang as root
@@ -28,7 +34,6 @@ start(_StartType, _StartArgs) ->
               ranch_tcp, [{port, PolicyPort}],
               socket_policy_server, []),
 
-    ConfigList = config(listeners, []),
 
     start_listener(ConfigList),
 
@@ -52,17 +57,19 @@ start_listener([{listen, Listen}|Listeners]) ->
   OutPort = list_config(Listen, out, 8482),
   WsPort = list_config(Listen, ws, 8002),
 
+  BroadcasterID = make_broadcast_id(InPort),
+
   Dispatch = cowboy_router:compile([
       {'_', [
-              {'_', data_broadcast_websocket, [InPort]}
+              {'_', data_broadcast_websocket, [BroadcasterID]}
             ]}
     ]),
   ranch:start_listener("svrv_" ++ integer_to_list(InPort), 128,
             ranch_tcp, [{port, InPort},{max_connections, infinity}],
-            data_broadcast_incoming, [InPort]),
+            data_broadcast_incoming, [BroadcasterID]),
   ranch:start_listener("clnt_" ++ integer_to_list(InPort), 128,
             ranch_tcp, [{port, OutPort},{max_connections, infinity}],
-            data_broadcast_outgoing, [InPort]),
+            data_broadcast_outgoing, [BroadcasterID]),
   start_http_policy("wbsk_" ++ integer_to_list(InPort), 128, 
             [{port, WsPort},{max_connections, infinity}], [{env, [{dispatch, Dispatch}]}]),
   start_listener(Listeners).

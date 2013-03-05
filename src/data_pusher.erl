@@ -17,7 +17,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, subscribe/1, unsubscribe/1, push/2]).
+-export([start_link/1, subscribe/1, unsubscribe/1, push/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {
-	  subscribers = [] :: dict()
+	  subscribers = [] :: [pid()]
 	 }).
 
 %%%===================================================================
@@ -40,17 +40,17 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(ID) ->
+    gen_server:start_link({local, ID}, ?MODULE, [], []).
 
 subscribe(ID) ->
-    gen_server:cast(?MODULE, {subscribe, ID, self()}).
+    gen_server:cast(ID, {subscribe, self()}).
 
 unsubscribe(ID) ->
-    gen_server:cast(?MODULE, {unsubscribe, ID, self()}).
+    gen_server:cast(ID, {unsubscribe, self()}).
 
-push(Data, ID) ->
-    gen_server:cast(?MODULE, {push, {Data, ID}}).
+push(ID,Data) ->
+    gen_server:cast(ID, {push, Data}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -68,7 +68,7 @@ push(Data, ID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{subscribers=dict:new()}}.
+    {ok, #state{subscribers=[]}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,18 +98,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({subscribe, ID, Pid}, #state{subscribers=Subscribers}=State) ->
-    {noreply, State#state{subscribers=dict:append(ID, Pid, Subscribers)}};
-handle_cast({unsubscribe, ID, Pid}, #state{subscribers=Subscribers}=State) ->
-    {ok, DictList} = dict:find(ID, Subscribers),
-    RemovedList = lists:delete(Pid, DictList),
-    {noreply, State#state{subscribers=dict:store(ID, RemovedList, Subscribers)}};
-handle_cast({push, {ID, Data}}, State) ->
-    case dict:find(ID, State#state.subscribers) of
-        {ok, Subscribers} ->
-            dispatch(Subscribers, {send, Data});
-        _ -> ok
-    end,
+handle_cast({subscribe, Pid}, #state{subscribers=Subscribers}=State) ->
+    {noreply, State#state{subscribers=[Pid|Subscribers]}};
+handle_cast({unsubscribe, Pid}, #state{subscribers=Subscribers}=State) ->
+    {noreply, State#state{subscribers=lists:delete(Pid, Subscribers)}};
+handle_cast({push, Data}, #state{subscribers=Subscribers}=State) ->
+    Message = {send, Data},
+    [ Pid ! Message || Pid <- Subscribers ],
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -155,10 +150,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-dispatch([], _) -> 
-    ok;
-dispatch([Pid|Subscribers], Data) ->
-    Pid ! Data,
-    dispatch(Subscribers, Data).
-
