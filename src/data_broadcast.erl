@@ -58,13 +58,13 @@ start_listener([{listen, Listen}|Listeners]) ->
             ]}
     ]),
   ranch:start_listener("svrv_" ++ integer_to_list(InPort), 128,
-            ranch_tcp, [{port, InPort}],
+            ranch_tcp, [{port, InPort},{max_connections, infinity}],
             data_broadcast_incoming, [InPort]),
   ranch:start_listener("clnt_" ++ integer_to_list(InPort), 128,
-            ranch_tcp, [{port, OutPort}],
+            ranch_tcp, [{port, OutPort},{max_connections, infinity}],
             data_broadcast_outgoing, [InPort]),
   start_http_policy("wbsk_" ++ integer_to_list(InPort), 128, 
-            [{port, WsPort}], [{env, [{dispatch, Dispatch}]}]),
+            [{port, WsPort},{max_connections, infinity}], [{env, [{dispatch, Dispatch}]}]),
   start_listener(Listeners).
 
 start() -> start(?MODULE).
