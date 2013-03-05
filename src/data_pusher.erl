@@ -44,10 +44,10 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 subscribe(ID) ->
-    gen_server:call(?MODULE, {subscribe, ID}).
+    gen_server:cast(?MODULE, {subscribe, ID, self()}).
 
 unsubscribe(ID) ->
-    gen_server:call(?MODULE, {unsubscribe, ID}).
+    gen_server:cast(?MODULE, {unsubscribe, ID, self()}).
 
 push(Data, ID) ->
     gen_server:cast(?MODULE, {push, {Data, ID}}).
@@ -84,12 +84,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({subscribe, ID}, {Pid, _Tag}, #state{subscribers=Subscribers}=State) ->
-    {reply, ok, State#state{subscribers=dict:append(ID, Pid, Subscribers)}};
-handle_call({unsubscribe, ID}, {Pid, _Tag}, #state{subscribers=Subscribers}=State) ->
-    {ok, DictList} = dict:find(ID, Subscribers),
-    RemovedList = lists:delete(Pid, DictList),
-    {reply, ok, State#state{subscribers=dict:store(ID, RemovedList, Subscribers)}};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -104,6 +98,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({subscribe, ID, Pid}, #state{subscribers=Subscribers}=State) ->
+    {noreply, State#state{subscribers=dict:append(ID, Pid, Subscribers)}};
+handle_cast({unsubscribe, ID, Pid}, #state{subscribers=Subscribers}=State) ->
+    {ok, DictList} = dict:find(ID, Subscribers),
+    RemovedList = lists:delete(Pid, DictList),
+    {noreply, State#state{subscribers=dict:store(ID, RemovedList, Subscribers)}};
 handle_cast({push, {ID, Data}}, State) ->
     case dict:find(ID, State#state.subscribers) of
         {ok, Subscribers} ->
