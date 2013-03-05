@@ -83,6 +83,6 @@ init(ListenerPid, Socket, Transport, Opts) ->
         {ok, other, {error,timeout}} ->
             Transport:close(Socket);
         {ok, other, Other} ->
-            lager:warning("SocketPolicyServer unhandled: ~p", [Other]),
+            lager:warning("data_broadcast_httpprotocol unhandled: ~p", [Other]),
             Transport:close(Socket)
     end.
