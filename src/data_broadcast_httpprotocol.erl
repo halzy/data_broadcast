@@ -82,6 +82,8 @@ init(ListenerPid, Socket, Transport, Opts) ->
             cowboy_protocol:parse_request(Buffer, State, erlang:size(Buffer));
         {ok, other, {error,timeout}} ->
             Transport:close(Socket);
+        {ok, other, {error,closed}} ->
+            ok;
         {ok, other, Other} ->
             lager:warning("data_broadcast_httpprotocol unhandled: ~p", [Other]),
             Transport:close(Socket)
