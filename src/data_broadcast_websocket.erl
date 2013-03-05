@@ -61,6 +61,7 @@ websocket_info({send, Data}, Req, State) ->
 websocket_info(_Info, Req, State) ->
     {ok, Req, State, hibernate}.
 
-websocket_terminate(_Reason, _Req, #state{id=ID}) ->
+websocket_terminate(Reason, _Req, #state{id=ID}) ->
     data_pusher:unsubscribe(ID),
+    lager:warning("websocket_terminate received: ~p", [Reason]),
     ok.
