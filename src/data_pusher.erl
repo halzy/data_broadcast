@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {
-	  subscribers = [] :: [{integer(), pid()}]
+	  subscribers = [] :: dict()
 	 }).
 
 %%%===================================================================
@@ -68,7 +68,7 @@ push(Data, ID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{subscribers=[]}}.
+    {ok, #state{subscribers=dict:new()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -85,9 +85,11 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({subscribe, ID}, {Pid, _Tag}, #state{subscribers=Subscribers}=State) ->
-    {reply, ok, State#state{subscribers=[{ID, Pid}|Subscribers]}};
+    {reply, ok, State#state{subscribers=dict:append(ID, Pid, Subscribers)}};
 handle_call({unsubscribe, ID}, {Pid, _Tag}, #state{subscribers=Subscribers}=State) ->
-    {reply, ok, State#state{subscribers=lists:delete({ID, Pid},Subscribers)}};
+    {ok, DictList} = dict:find(ID, Subscribers),
+    RemovedList = lists:delete(Pid, DictList),
+    {reply, ok, State#state{subscribers=dict:store(ID, RemovedList, Subscribers)}};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -102,14 +104,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({push, {ID1, Data}}, State) ->
-    Dispatch =  fun({ID2, Pid}) -> 
-                    case ID2 of
-                        ID1 -> Pid ! {send, Data};
-                        _ -> ok
-                    end
-                end,
-    lists:foreach(Dispatch, State#state.subscribers),
+handle_cast({push, {ID, Data}}, State) ->
+    case dict:find(ID, State#state.subscribers) of
+        {ok, Subscribers} ->
+            dispatch(Subscribers, {send, Data});
+        _ -> ok
+    end,
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -155,3 +155,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+dispatch([], _) -> 
+    ok;
+dispatch([Pid|Subscribers], Data) ->
+    Pid ! Data,
+    dispatch(Subscribers, Data).
+
