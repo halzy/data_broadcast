@@ -49,7 +49,7 @@ terminate(_Reason, _Req, _State) ->
 websocket_init(_Any, Req, [ID]) ->
     data_pusher:subscribe(ID),
     Req2 = cowboy_req:compact(Req),
-    {ok, Req2, #state{id=ID}, hibernate}.
+    {ok, Req2, #state{id=ID}}.
 
 websocket_handle({text, Msg}, Req, State) ->
     {reply, {text, << "You said: ", Msg/binary >>}, Req, State, hibernate};
@@ -57,7 +57,7 @@ websocket_handle(_Any, Req, State) ->
     {ok, Req, State, hibernate}.
 
 websocket_info({send, Data}, Req, State) ->
-    {reply, {binary, Data}, Req, State, hibernate};
+    {reply, {binary, Data}, Req, State};
 websocket_info(_Info, Req, State) ->
     {ok, Req, State, hibernate}.
 
