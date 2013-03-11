@@ -31,9 +31,8 @@ start(_StartType, _StartArgs) ->
     % this is so we do not have to run erlang as root
     PolicyPort = config(policy_port, 8443),
     ranch:start_listener(plcy, 128, 
-              ranch_tcp, [{port, PolicyPort}],
+              ranch_tcp, [{port, PolicyPort},{keepalive, true}],
               socket_policy_server, []),
-
 
     start_listener(ConfigList),
 
@@ -65,13 +64,13 @@ start_listener([{listen, Listen}|Listeners]) ->
             ]}
     ]),
   ranch:start_listener("svrv_" ++ integer_to_list(InPort), 128,
-            ranch_tcp, [{port, InPort},{max_connections, infinity}],
+            ranch_tcp, [{port, InPort},{max_connections, infinity},{keepalive, true}],
             data_broadcast_incoming, [BroadcasterID]),
   ranch:start_listener("clnt_" ++ integer_to_list(InPort), 128,
-            ranch_tcp, [{port, OutPort},{max_connections, infinity}],
+            ranch_tcp, [{port, OutPort},{max_connections, infinity},{keepalive, true}],
             data_broadcast_outgoing, [BroadcasterID]),
   start_http_policy("wbsk_" ++ integer_to_list(InPort), 128, 
-            [{port, WsPort},{max_connections, infinity}], [{env, [{dispatch, Dispatch}]}]),
+            [{port, WsPort},{max_connections, infinity},{keepalive, true}], [{env, [{dispatch, Dispatch}]}]),
   start_listener(Listeners).
 
 start() -> start(?MODULE).
