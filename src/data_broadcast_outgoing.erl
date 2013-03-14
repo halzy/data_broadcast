@@ -20,7 +20,8 @@
 -record(state, {
 	socket :: inet:socket(),
 	transport :: module(),
-    id :: integer()
+    id :: integer(),
+    stats_id :: string()
 }).
 
 -spec start_link(pid(), inet:socket(), module(), any()) -> {ok, pid()}.
@@ -33,19 +34,23 @@ init(ListenerPid, Socket, Transport, [ID]) ->
     ok = ranch:accept_ack(ListenerPid),
     case socket_policy_server:read_policy_request(Socket, Transport) of
         {ok, policy} ->
+            estatsd:increment("socket_policy_req_" ++ port_string(Transport, Socket)),
             Transport:close(Socket);
         {ok, other, _} ->
+            StatsID = port_string(Transport, Socket),
+            estatsd:increment("data_outgoing_conn_inc_" ++ StatsID),
             data_pusher:subscribe(ID),
-            data_loop(#state{socket=Socket, transport=Transport, id=ID})
+            data_loop(#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID})
     end.
 
 -spec data_loop(#state{}) -> ok.
-data_loop(State=#state{socket=Socket, transport=Transport, id=ID}) ->
+data_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}) ->
     receive
     	{send, SendData} ->
     	    case Transport:send(Socket, SendData) of
         		ok -> data_loop(State);
         		{error, _Reason} -> 
+                    estatsd:increment("data_outgoing_conn_dec_" ++ StatsID),
         		    data_pusher:unsubscribe(ID), ok
     	    end
     after 1000 ->
@@ -54,6 +59,12 @@ data_loop(State=#state{socket=Socket, transport=Transport, id=ID}) ->
     		{ok, _Data} -> data_loop(State);
     		{error, timeout} -> data_loop(State);
     		{error, _Reason} -> 
+                estatsd:increment("data_outgoing_conn_dec_" ++ StatsID),
     		    data_pusher:unsubscribe(ID), ok
 	    end
     end.
+
+port_string(Transport, Socket) ->
+    Something = Transport:sockname(Socket),
+    {ok, {_IP, Port}} = Something,
+    erlang:integer_to_list(Port).

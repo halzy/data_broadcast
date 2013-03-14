@@ -14,13 +14,14 @@
 
 -module(data_broadcast_incoming).
 
--export([start_link/4]). 
--export([init/4]). 
+-export([start_link/4]).
+-export([init/4]).
 
 -record(state, {
 	  socket :: inet:socket(),
 	  transport :: module(),
-      id :: integer()
+      id :: integer(),
+      stats_id :: string()
 	 }).
 
 -spec start_link(pid(), inet:socket(), module(), any()) -> {ok, pid()}.
@@ -30,16 +31,23 @@ start_link(ListenerPid, Socket, Transport, Opts) ->
 
 -spec init(pid(), inet:socket(), module(), any()) -> ok.
 init(ListenerPid, Socket, Transport, [ID]) ->
+	StatsID = port_string(Transport, Socket),
+    estatsd:increment("data_incoming_conn_inc_" ++ StatsID),
     ok = ranch:accept_ack(ListenerPid),
-    read_data(#state{socket=Socket, transport=Transport, id=ID}).
+    read_data(#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}).
 
 -spec read_data(#state{}) -> ok.
-read_data(State=#state{socket=Socket, transport=Transport, id=ID}) ->
+read_data(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}) ->
     case Transport:recv(Socket, 0, infinity) of
 	{ok, Data} -> 
 	    data_pusher:push(ID, Data),
 	    read_data(State); 
-	{error, timeout} -> Transport:close(Socket), ok;
-	{error, closed} -> Transport:close(Socket), ok
+	{error, _} -> 
+	    estatsd:increment("data_incoming_conn_dec_" ++ StatsID),
+		Transport:close(Socket),
+		ok
     end.
 
+port_string(Transport, Socket) ->
+	{ok, {_IP, Port}} = Transport:sockname(Socket),
+	erlang:integer_to_list(Port).

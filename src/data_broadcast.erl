@@ -21,7 +21,14 @@ config(Name, Default) ->
 make_broadcast_id(Port) ->
   list_to_atom("data_pusher_" ++ integer_to_list(Port)).
 
+start_stats(false) -> ok;
+start_stats(true) -> 
+  application:start(estatsd).
+
 start(_StartType, _StartArgs) ->
+
+    start_stats(config(estatsd_enabled, false)),
+
     ConfigList = config(listeners, []),
     ListenerPorts = lists:map(fun({listen, Listen}) -> list_config(Listen, in, 5013) end, ConfigList),
     Broadcasters = [ make_broadcast_id(Port) || Port <- ListenerPorts],

@@ -77,6 +77,7 @@ init(ListenerPid, Socket, Transport, Opts) ->
     
     case socket_policy_server:read_policy_request(Socket, Transport) of
         {ok, policy} ->
+            estatsd:increment("socket_policy_req_" ++ port_string(Transport, Socket)),
             Transport:close(Socket);
         {ok, other, {ok, Buffer}} ->
             cowboy_protocol:parse_request(Buffer, State, erlang:size(Buffer));
@@ -88,3 +89,7 @@ init(ListenerPid, Socket, Transport, Opts) ->
             lager:warning("data_broadcast_httpprotocol unhandled: ~p", [Other]),
             Transport:close(Socket)
     end.
+
+port_string(Transport, Socket) ->
+    {ok, {_IP, Port}} = Transport:sockname(Socket),
+    erlang:integer_to_list(Port).

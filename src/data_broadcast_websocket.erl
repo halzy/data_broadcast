@@ -46,9 +46,12 @@ terminate(_Reason, _Req, _State) ->
       id :: integer()
      }).
 
+
 websocket_init(_Any, Req, [ID]) ->
+    {Port, PortReq} = port_string(Req),
+    estatsd:increment("websocket_count_inc_" ++ Port),
     data_pusher:subscribe(ID),
-    Req2 = cowboy_req:compact(Req),
+    Req2 = cowboy_req:compact(PortReq),
     {ok, Req2, #state{id=ID}}.
 
 websocket_handle({text, Msg}, Req, State) ->
@@ -61,7 +64,13 @@ websocket_info({send, Data}, Req, State) ->
 websocket_info(_Info, Req, State) ->
     {ok, Req, State, hibernate}.
 
-websocket_terminate(Reason, _Req, #state{id=ID}) ->
+websocket_terminate(_Reason, Req, #state{id=ID}) ->
+    {Port, _PortReq} = port_string(Req),
+    estatsd:increment("websocket_count_dec_" ++ Port),
     data_pusher:unsubscribe(ID),
-    lager:warning("websocket_terminate received: ~p", [Reason]),
+    %lager:warning("websocket_terminate received: ~p", [Reason]),
     ok.
+
+port_string(Req) ->
+    {Port, Req2} = cowboy_req:port(Req),
+    {erlang:integer_to_list(Port), Req2}.
