@@ -23,14 +23,17 @@ make_broadcast_id(Port) ->
 
 start_stats(false) -> ok;
 start_stats(true) -> 
-  application:start(estatsd).
+  application:start(folsom),
+  application:start(zeta),
+  application:start(folsomite).
 
 start(_StartType, _StartArgs) ->
 
-    start_stats(config(estatsd_enabled, false)),
+    start_stats(config(stats_enabled, false)),
 
     ConfigList = config(listeners, []),
     ListenerPorts = lists:map(fun({listen, Listen}) -> list_config(Listen, in, 5013) end, ConfigList),
+
     Broadcasters = [ make_broadcast_id(Port) || Port <- ListenerPorts],
     Result = data_broadcast_sup:start_link(Broadcasters),
 
@@ -59,9 +62,15 @@ start_http_policy(Ref, NbAcceptors, TransOpts, ProtoOpts)
 start_listener([]) ->
   ok;
 start_listener([{listen, Listen}|Listeners]) ->
-  InPort = list_config(Listen, in, 5013),
-  OutPort = list_config(Listen, out, 8482),
+  InPort = list_config(Listen, in, 8482),
+  OutPort = list_config(Listen, out, 8013),
   WsPort = list_config(Listen, ws, 8002),
+
+  folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(InPort))),
+  folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(OutPort))),
+  folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(WsPort))),
+  folsom_metrics:new_histogram(list_to_atom("socket_policy_" ++ integer_to_list(OutPort)), slide, 10),
+  folsom_metrics:new_histogram(list_to_atom("socket_policy_" ++ integer_to_list(WsPort)), slide, 10),
 
   BroadcasterID = make_broadcast_id(InPort),
 

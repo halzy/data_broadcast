@@ -32,7 +32,7 @@ start_link(ListenerPid, Socket, Transport, Opts) ->
 -spec init(pid(), inet:socket(), module(), any()) -> ok.
 init(ListenerPid, Socket, Transport, [ID]) ->
 	StatsID = port_string(Transport, Socket),
-    estatsd:increment("data_incoming_conn_inc_" ++ StatsID),
+	folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {inc,1}}),
     ok = ranch:accept_ack(ListenerPid),
     read_data(#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}).
 
@@ -43,7 +43,7 @@ read_data(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=Stats
 	    data_pusher:push(ID, Data),
 	    read_data(State); 
 	{error, _} -> 
-	    estatsd:increment("data_incoming_conn_dec_" ++ StatsID),
+		folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
 		Transport:close(Socket),
 		ok
     end.

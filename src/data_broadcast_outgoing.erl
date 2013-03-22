@@ -34,11 +34,11 @@ init(ListenerPid, Socket, Transport, [ID]) ->
     ok = ranch:accept_ack(ListenerPid),
     case socket_policy_server:read_policy_request(Socket, Transport) of
         {ok, policy} ->
-            estatsd:increment("socket_policy_req_" ++ port_string(Transport, Socket)),
+            folsom_metrics:notify({list_to_existing_atom("socket_policy_" ++ port_string(Transport, Socket)), 1}),
             Transport:close(Socket);
         {ok, other, _} ->
             StatsID = port_string(Transport, Socket),
-            estatsd:increment("data_outgoing_conn_inc_" ++ StatsID),
+            folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {inc,1}}),
             data_pusher:subscribe(ID),
             data_loop(#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID})
     end.
@@ -50,7 +50,7 @@ data_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=Stats
     	    case Transport:send(Socket, SendData) of
         		ok -> data_loop(State);
         		{error, _Reason} -> 
-                    estatsd:increment("data_outgoing_conn_dec_" ++ StatsID),
+                    folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
         		    data_pusher:unsubscribe(ID), ok
     	    end
     after 1000 ->
@@ -59,7 +59,7 @@ data_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=Stats
     		{ok, _Data} -> data_loop(State);
     		{error, timeout} -> data_loop(State);
     		{error, _Reason} -> 
-                estatsd:increment("data_outgoing_conn_dec_" ++ StatsID),
+                folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
     		    data_pusher:unsubscribe(ID), ok
 	    end
     end.

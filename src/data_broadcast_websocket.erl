@@ -49,7 +49,7 @@ terminate(_Reason, _Req, _State) ->
 
 websocket_init(_Any, Req, [ID]) ->
     {Port, PortReq} = port_string(Req),
-    estatsd:increment("websocket_count_inc_" ++ Port),
+    folsom_metrics:notify({list_to_existing_atom("client_count_" ++ Port), {inc,1}}),
     data_pusher:subscribe(ID),
     Req2 = cowboy_req:compact(PortReq),
     {ok, Req2, #state{id=ID}}.
@@ -66,7 +66,7 @@ websocket_info(_Info, Req, State) ->
 
 websocket_terminate(_Reason, Req, #state{id=ID}) ->
     {Port, _PortReq} = port_string(Req),
-    estatsd:increment("websocket_count_dec_" ++ Port),
+    folsom_metrics:notify({list_to_existing_atom("client_count_" ++ Port), {dec,1}}),
     data_pusher:unsubscribe(ID),
     %lager:warning("websocket_terminate received: ~p", [Reason]),
     ok.
