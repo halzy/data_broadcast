@@ -53,7 +53,7 @@ send_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=Stats
         		    data_pusher:unsubscribe(ID), 
                     folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
                     folsom_metrics:notify({list_to_existing_atom("errors_" ++ StatsID), {inc, 1}}),
-                    lager:error("outgoing ~p: ~p~n", [StatsID, Error]),
+                    lager:error("send outgoing ~p: ~p~n", [StatsID, Error]),
                     ok
     	    end
     after 1000 ->
@@ -70,7 +70,7 @@ read_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=Stats
             data_pusher:unsubscribe(ID),
             folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
             folsom_metrics:notify({list_to_existing_atom("errors_" ++ StatsID), {inc, 1}}),
-            lager:error("outgoing ~p: ~p~n", [StatsID, Error]),
+            lager:error("read outgoing ~p: ~p~n", [StatsID, Error]),
             ok
     end.
 
