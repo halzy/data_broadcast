@@ -87,8 +87,6 @@ init(ListenerPid, Socket, Transport, Opts) ->
             folsom_metrics:notify({list_to_existing_atom("errors_" ++ PortString), {inc, 1}}),
             Transport:close(Socket);
         {ok, other, {error,closed}} ->
-            folsom_metrics:notify({list_to_existing_atom("errors_" ++ PortString), {inc, 1}}),
-            lager:error("http ~p closed~n", [PortString]),
             ok;
         {ok, other, Other} ->
             folsom_metrics:notify({list_to_existing_atom("errors_" ++ PortString), {inc, 1}}),

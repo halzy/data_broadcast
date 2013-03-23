@@ -49,6 +49,10 @@ send_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=Stats
     	{send, SendData} ->
     	    case Transport:send(Socket, SendData) of
         		ok -> read_loop(State);
+                {error, closed} -> 
+                    data_pusher:unsubscribe(ID), 
+                    folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
+                    ok;
         		{error, Error} -> 
         		    data_pusher:unsubscribe(ID), 
                     folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
@@ -66,6 +70,10 @@ read_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=Stats
     case Transport:recv(Socket, 0, 0) of
         {ok, _Data} -> send_loop(State);
         {error, timeout} -> send_loop(State);
+        {error, closed} -> 
+            data_pusher:unsubscribe(ID),
+            folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
+            ok;
         {error, Error} -> 
             data_pusher:unsubscribe(ID),
             folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
