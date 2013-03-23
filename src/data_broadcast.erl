@@ -69,8 +69,9 @@ start_listener([{listen, Listen}|Listeners]) ->
   folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(InPort))),
   folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(OutPort))),
   folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(WsPort))),
-  folsom_metrics:new_histogram(list_to_atom("socket_policy_" ++ integer_to_list(OutPort)), slide, 10),
-  folsom_metrics:new_histogram(list_to_atom("socket_policy_" ++ integer_to_list(WsPort)), slide, 10),
+  folsom_metrics:new_counter(list_to_atom("socket_policy_" ++ integer_to_list(OutPort))),
+  folsom_metrics:new_counter(list_to_atom("socket_policy_" ++ integer_to_list(WsPort))),
+  folsom_metrics:new_counter(list_to_atom("bandwidth_" ++ integer_to_list(InPort))),
 
   BroadcasterID = make_broadcast_id(InPort),
 

@@ -40,6 +40,7 @@ init(ListenerPid, Socket, Transport, [ID]) ->
 read_data(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}) ->
     case Transport:recv(Socket, 0, infinity) of
 	{ok, Data} -> 
+		folsom_metrics:notify({list_to_existing_atom("bandwidth_" ++ StatsID), {inc, size(Data)}}),
 	    data_pusher:push(ID, Data),
 	    read_data(State); 
 	{error, _} -> 

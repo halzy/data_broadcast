@@ -77,7 +77,7 @@ init(ListenerPid, Socket, Transport, Opts) ->
     
     case socket_policy_server:read_policy_request(Socket, Transport) of
         {ok, policy} ->
-            folsom_metrics:notify({list_to_existing_atom("socket_policy_" ++ port_string(Transport, Socket)), 1}),
+            folsom_metrics:notify({list_to_existing_atom("socket_policy_" ++ port_string(Transport, Socket)), {inc, 1}}),
             Transport:close(Socket);
         {ok, other, {ok, Buffer}} ->
             cowboy_protocol:parse_request(Buffer, State, erlang:size(Buffer));
