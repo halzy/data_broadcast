@@ -43,9 +43,11 @@ read_data(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=Stats
 		folsom_metrics:notify({list_to_existing_atom("bandwidth_" ++ StatsID), {inc, size(Data)}}),
 	    data_pusher:push(ID, Data),
 	    read_data(State); 
-	{error, _} -> 
-		folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
+	{error, Error} -> 
 		Transport:close(Socket),
+		folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
+        folsom_metrics:notify({list_to_existing_atom("errors_" ++ StatsID), {inc, 1}}),
+        lager:error("incoming ~p: ~p~n", [StatsID, Error]),
 		ok
     end.
 

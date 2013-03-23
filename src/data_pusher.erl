@@ -26,7 +26,8 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {
-	  subscribers = [] :: [pid()]
+	  subscribers = [] :: [pid()],
+      stats_id = unknown :: atom()
 	 }).
 
 %%%===================================================================
@@ -41,7 +42,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(ID) ->
-    gen_server:start_link({local, ID}, ?MODULE, [], []).
+    gen_server:start_link({local, ID}, ?MODULE, [ID], []).
 
 subscribe(ID) ->
     gen_server:cast(ID, {subscribe, self()}).
@@ -67,8 +68,8 @@ push(ID,Data) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, #state{subscribers=[]}}.
+init([ID]) ->
+    {ok, #state{subscribers=[], stats_id=ID}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,9 +99,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({subscribe, Pid}, #state{subscribers=Subscribers}=State) ->
+handle_cast({subscribe, Pid}, #state{subscribers=Subscribers,stats_id=StatsID}=State) ->
+    folsom_metrics:notify({StatsID, {inc,1}}),
     {noreply, State#state{subscribers=[Pid|Subscribers]}};
-handle_cast({unsubscribe, Pid}, #state{subscribers=Subscribers}=State) ->
+handle_cast({unsubscribe, Pid}, #state{subscribers=Subscribers,stats_id=StatsID}=State) ->
+    folsom_metrics:notify({StatsID, {dec,1}}),
     {noreply, State#state{subscribers=lists:delete(Pid, Subscribers)}};
 handle_cast({push, Data}, #state{subscribers=Subscribers}=State) ->
     Message = {send, Data},

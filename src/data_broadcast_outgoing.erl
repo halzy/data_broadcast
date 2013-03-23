@@ -40,28 +40,38 @@ init(ListenerPid, Socket, Transport, [ID]) ->
             StatsID = port_string(Transport, Socket),
             folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {inc,1}}),
             data_pusher:subscribe(ID),
-            data_loop(#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID})
+            send_loop(#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID})
     end.
 
--spec data_loop(#state{}) -> ok.
-data_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}) ->
+-spec send_loop(#state{}) -> ok.
+send_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}) ->
     receive
     	{send, SendData} ->
     	    case Transport:send(Socket, SendData) of
-        		ok -> data_loop(State);
-        		{error, _Reason} -> 
+        		ok -> read_loop(State);
+        		{error, Error} -> 
+        		    data_pusher:unsubscribe(ID), 
                     folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
-        		    data_pusher:unsubscribe(ID), ok
+                    folsom_metrics:notify({list_to_existing_atom("errors_" ++ StatsID), {inc, 1}}),
+                    lager:error("outgoing ~p: ~p~n", [StatsID, Error]),
+                    ok
     	    end
     after 1000 ->
-	    %% drop data the data receiver sends us
-	    case Transport:recv(Socket, 0, 0) of
-    		{ok, _Data} -> data_loop(State);
-    		{error, timeout} -> data_loop(State);
-    		{error, _Reason} -> 
-                folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
-    		    data_pusher:unsubscribe(ID), ok
-	    end
+        read_loop(State)
+    end.
+
+-spec read_loop(#state{}) -> ok.
+read_loop(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}) ->
+    %% drop data the data receiver sends us
+    case Transport:recv(Socket, 0, 0) of
+        {ok, _Data} -> send_loop(State);
+        {error, timeout} -> send_loop(State);
+        {error, Error} -> 
+            data_pusher:unsubscribe(ID),
+            folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
+            folsom_metrics:notify({list_to_existing_atom("errors_" ++ StatsID), {inc, 1}}),
+            lager:error("outgoing ~p: ~p~n", [StatsID, Error]),
+            ok
     end.
 
 port_string(Transport, Socket) ->

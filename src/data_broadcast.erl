@@ -37,6 +37,8 @@ start(_StartType, _StartArgs) ->
     Broadcasters = [ make_broadcast_id(Port) || Port <- ListenerPorts],
     Result = data_broadcast_sup:start_link(Broadcasters),
 
+    [ folsom_metrics:new_counter(DataPusher) || DataPusher <- Broadcasters],
+
     % the firewall (iptables) is redirecting port 843 to 8843 for us
     % this is so we do not have to run erlang as root
     PolicyPort = config(policy_port, 8443),
@@ -71,6 +73,9 @@ start_listener([{listen, Listen}|Listeners]) ->
   folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(WsPort))),
   folsom_metrics:new_counter(list_to_atom("socket_policy_" ++ integer_to_list(OutPort))),
   folsom_metrics:new_counter(list_to_atom("socket_policy_" ++ integer_to_list(WsPort))),
+  folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(InPort))),
+  folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(OutPort))),
+  folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(WsPort))),
   folsom_metrics:new_counter(list_to_atom("bandwidth_" ++ integer_to_list(InPort))),
 
   BroadcasterID = make_broadcast_id(InPort),

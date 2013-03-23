@@ -64,11 +64,11 @@ websocket_info({send, Data}, Req, State) ->
 websocket_info(_Info, Req, State) ->
     {ok, Req, State, hibernate}.
 
-websocket_terminate(_Reason, Req, #state{id=ID}) ->
+websocket_terminate(Reason, Req, #state{id=ID}) ->
     {Port, _PortReq} = port_string(Req),
     folsom_metrics:notify({list_to_existing_atom("client_count_" ++ Port), {dec,1}}),
     data_pusher:unsubscribe(ID),
-    %lager:warning("websocket_terminate received: ~p", [Reason]),
+    lager:warning("websocket_terminate ~p received: ~p~n", [Port,Reason]),
     ok.
 
 port_string(Req) ->
