@@ -76,7 +76,7 @@ start_listener([{listen, Listen}|Listeners]) ->
   folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(InPort))),
   folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(OutPort))),
   folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(WsPort))),
-  folsom_metrics:new_counter(list_to_atom("bandwidth_" ++ integer_to_list(InPort))),
+  folsom_metrics:new_gauge(list_to_atom("bandwidth_" ++ integer_to_list(InPort))),
 
   BroadcasterID = make_broadcast_id(InPort),
 

@@ -21,7 +21,8 @@
 	  socket :: inet:socket(),
 	  transport :: module(),
       id :: integer(),
-      stats_id :: string()
+      stats_id :: string(),
+      stats_acc :: any()
 	 }).
 
 -spec start_link(pid(), inet:socket(), module(), any()) -> {ok, pid()}.
@@ -34,15 +35,17 @@ init(ListenerPid, Socket, Transport, [ID]) ->
 	StatsID = port_string(Transport, Socket),
 	folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {inc,1}}),
     ok = ranch:accept_ack(ListenerPid),
-    read_data(#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}).
+    read_data(#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID, stats_acc=accumulator:new(10)}).
 
 -spec read_data(#state{}) -> ok.
-read_data(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID}) ->
+read_data(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID, stats_acc=StatsAcc1}) ->
     case Transport:recv(Socket, 0, infinity) of
 	{ok, Data} -> 
-		folsom_metrics:notify({list_to_existing_atom("bandwidth_" ++ StatsID), {inc, size(Data)}}),
+		StatsAcc2 = accumulator:add(StatsAcc1,size(Data)),
+		{StatsAcc3, StatsValue} = accumulator:sum(StatsAcc2),
+		folsom_metrics:notify({list_to_existing_atom("bandwidth_" ++ StatsID), StatsValue}),
 	    data_pusher:push(ID, Data),
-	    read_data(State); 
+	    read_data(State#state{stats_acc=StatsAcc3}); 
 	{error, Error} -> 
 		Transport:close(Socket),
 		folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
