@@ -53,7 +53,7 @@ epoch() ->
 
 empty_test() ->
 	Acc1 = accumulator:new(1),
-	{_, Sum1} = accumulator:sum(Acc1),
+	{_Acc2, Sum1} = accumulator:sum(Acc1),
 	?assertEqual(0, Sum1).
 
 one_test() ->
@@ -84,5 +84,27 @@ splice_test() ->
 	Acc4 = accumulator:add(Acc3#state{group_fun=fun() -> 2 end}, 9),
 	{_, Sum1} = accumulator:sum(Acc4),
 	?assertEqual(8, Sum1).
+
+flatline_bug_test() ->
+	Acc1 = accumulator:new(10, fun() -> 0 end),
+	Acc2 = accumulator:add(Acc1, 1),
+	Acc3 = accumulator:add(Acc2#state{group_fun=fun() -> 1 end}, 1),
+	Acc4 = accumulator:add(Acc3#state{group_fun=fun() -> 2 end}, 1),
+	Acc5 = accumulator:add(Acc4#state{group_fun=fun() -> 3 end}, 1),
+	Acc6 = accumulator:add(Acc5#state{group_fun=fun() -> 4 end}, 1),
+	Acc7 = accumulator:add(Acc6#state{group_fun=fun() -> 5 end}, 1),
+	Acc8 = accumulator:add(Acc7#state{group_fun=fun() -> 6 end}, 1),
+	Acc9 = accumulator:add(Acc8#state{group_fun=fun() -> 7 end}, 1),
+	Acc10 = accumulator:add(Acc9#state{group_fun=fun() -> 8 end}, 1),
+	Acc11 = accumulator:add(Acc10#state{group_fun=fun() -> 9 end}, 1),
+	Acc12 = accumulator:add(Acc11#state{group_fun=fun() -> 10 end}, 1),
+	Acc13 = accumulator:add(Acc12#state{group_fun=fun() -> 11 end}, 1),
+	
+	%% now we have '1' in 12 buckets.
+	{Acc14, Sum1} = accumulator:sum(Acc13),
+	?assertEqual(10, Sum1),
+
+	{_Acc15, Sum2} = accumulator:sum(Acc14#state{group_fun=fun() -> 17 end}),
+	?assertEqual(5, Sum2).
 
 -endif.
