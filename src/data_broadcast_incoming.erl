@@ -39,13 +39,17 @@ init(ListenerPid, Socket, Transport, [ID]) ->
 
 -spec read_data(#state{}) -> ok.
 read_data(State=#state{socket=Socket, transport=Transport, id=ID, stats_id=StatsID, stats_acc=StatsAcc1}) ->
-    case Transport:recv(Socket, 0, infinity) of
+    case Transport:recv(Socket, 0, 1000) of
 	{ok, Data} -> 
 		StatsAcc2 = accumulator:add(StatsAcc1,size(Data)),
 		{StatsAcc3, StatsValue} = accumulator:sum(StatsAcc2),
 		folsom_metrics:notify({list_to_existing_atom("bandwidth_" ++ StatsID), StatsValue}),
 	    data_pusher:push(ID, Data),
-	    read_data(State#state{stats_acc=StatsAcc3}); 
+	    read_data(State#state{stats_acc=StatsAcc3});
+	{error, timeout} ->
+		{StatsAcc2, StatsValue} = accumulator:sum(StatsAcc1),
+		folsom_metrics:notify({list_to_existing_atom("bandwidth_" ++ StatsID), StatsValue}),
+		read_data(State#state{stats_acc=StatsAcc2});
 	{error, Error} -> 
 		Transport:close(Socket),
 		folsom_metrics:notify({list_to_existing_atom("client_count_" ++ StatsID), {dec,1}}),
