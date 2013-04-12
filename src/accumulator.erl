@@ -41,6 +41,7 @@ sum(State=#state{data=Data,groups=Groups,group_fun=GroupFun}) ->
 	Sum = lists:sum(SumGroups),
 	{State#state{data=NewData}, Sum}.
 
+-spec epoch() -> non_neg_integer().
 epoch() ->
 	{MegaSecs,Secs,_MicroSecs} = erlang:now(),
 	(MegaSecs*1000000 + Secs).
