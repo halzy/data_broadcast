@@ -46,7 +46,7 @@ start(_StartType, _StartArgs) ->
               ranch_tcp, [{port, PolicyPort},{keepalive, true}],
               socket_policy_server, []),
 
-    start_listener(ConfigList),
+    ok = start_listener(ConfigList),
 
     Result.
 
@@ -65,18 +65,27 @@ start_listener([]) ->
   ok;
 start_listener([{listen, Listen}|Listeners]) ->
   InPort = list_config(Listen, in, 8482),
-  OutPort = list_config(Listen, out, 8013),
-  WsPort = list_config(Listen, ws, 8002),
+  OutPorts = list_config(Listen, out, []),
 
   folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(InPort))),
-  folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(OutPort))),
-  folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(WsPort))),
-  folsom_metrics:new_counter(list_to_atom("socket_policy_" ++ integer_to_list(OutPort))),
-  folsom_metrics:new_counter(list_to_atom("socket_policy_" ++ integer_to_list(WsPort))),
   folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(InPort))),
-  folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(OutPort))),
-  folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(WsPort))),
   folsom_metrics:new_gauge(list_to_atom("bandwidth_" ++ integer_to_list(InPort))),
+
+  BroadcasterID = make_broadcast_id(InPort),
+
+  ranch:start_listener("svrv_" ++ integer_to_list(InPort), 128,
+            ranch_tcp, [{port, InPort},{max_connections, infinity},{keepalive, true}],
+            data_broadcast_incoming, [BroadcasterID]),
+
+  ok = start_listener_ports(InPort, OutPorts),
+  start_listener(Listeners).
+
+start_listener_ports(_InPort, []) ->
+  ok;
+start_listener_ports(InPort, [{ws, Port}|OutPorts]) ->
+  folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(Port))),
+  folsom_metrics:new_counter(list_to_atom("socket_policy_" ++ integer_to_list(Port))),
+  folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(Port))),
 
   BroadcasterID = make_broadcast_id(InPort),
 
@@ -85,15 +94,21 @@ start_listener([{listen, Listen}|Listeners]) ->
               {'_', data_broadcast_websocket, [BroadcasterID]}
             ]}
     ]),
-  ranch:start_listener("svrv_" ++ integer_to_list(InPort), 128,
-            ranch_tcp, [{port, InPort},{max_connections, infinity},{keepalive, true}],
-            data_broadcast_incoming, [BroadcasterID]),
-  ranch:start_listener("clnt_" ++ integer_to_list(InPort), 128,
-            ranch_tcp, [{port, OutPort},{max_connections, infinity},{keepalive, true}],
+  start_http_policy("wbsk_" ++ integer_to_list(InPort) ++ "_" ++ integer_to_list(Port), 128, 
+            [{port, Port},{max_connections, infinity},{keepalive, true}], [{env, [{dispatch, Dispatch}]}]),
+  start_listener_ports(InPort, OutPorts);
+start_listener_ports(InPort, [{tcp, Port}|OutPorts]) ->
+  folsom_metrics:new_counter(list_to_atom("client_count_" ++ integer_to_list(Port))),
+  folsom_metrics:new_counter(list_to_atom("socket_policy_" ++ integer_to_list(Port))),
+  folsom_metrics:new_counter(list_to_atom("errors_" ++ integer_to_list(Port))),
+
+  BroadcasterID = make_broadcast_id(InPort),
+
+  ranch:start_listener("clnt_" ++ integer_to_list(InPort) ++ "_" ++ integer_to_list(Port), 128,
+            ranch_tcp, [{port, Port},{max_connections, infinity},{keepalive, true}],
             data_broadcast_outgoing, [BroadcasterID]),
-  start_http_policy("wbsk_" ++ integer_to_list(InPort), 128, 
-            [{port, WsPort},{max_connections, infinity},{keepalive, true}], [{env, [{dispatch, Dispatch}]}]),
-  start_listener(Listeners).
+  start_listener_ports(InPort, OutPorts).
+
 
 start() -> start(?MODULE).
 start(App) ->
